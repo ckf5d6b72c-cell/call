@@ -1,0 +1,373 @@
+<!doctype html><html lang="ru"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#81d8d0">
+<title>Созвон</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#81d8d0;--blue:#0a9e98;--blue2:#07807b;--sky:#b8ebe6;--ice:#eaf9f7;--orange:#fd5e53;--orange2:#d8433a;--navy:#0f3331;--shade:#4fb0a9;
+ --spring:cubic-bezier(.3,1.6,.45,1);--sab:env(safe-area-inset-bottom);--sat:env(safe-area-inset-top)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--navy);overflow:hidden;font:500 16px/1.35 Rubik,ui-rounded,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button,select,input{font:inherit;color:inherit}
+button{border:0;background:none;cursor:pointer;padding:0}
+.flat{background:#fff;color:var(--navy);box-shadow:0 4px 0 var(--shade)}
+.press{transition:transform .35s var(--spring),box-shadow .35s var(--spring)}
+.press:active{transform:translateY(3px) scale(.95);box-shadow:0 1px 0 var(--shade)}
+@keyframes popin{from{transform:scale(0)}}
+@keyframes breath{50%{transform:scale(.55)}}
+.hide{display:none!important}
+
+/* карточки */
+.card{position:fixed;z-index:20;left:50%;top:50%;transform:translate(-50%,-50%);width:min(380px,calc(100vw - 32px));border-radius:34px;padding:26px 24px 24px;text-align:center;animation:pop .55s var(--spring) both}
+@keyframes pop{from{transform:translate(-50%,-50%) scale(0)}}
+.card h1{margin:0 0 6px;font-size:26px;font-weight:800;color:var(--blue);letter-spacing:-.3px}
+.card p{margin:0 0 18px;color:#4d7c78;font-size:15px}
+.logo{width:74px;height:74px;border-radius:50%;background:var(--bg);display:grid;place-items:center;margin:0 auto 14px}
+.logo svg{width:40px;height:40px;color:#fff}
+.big{display:block;width:100%;height:56px;border-radius:28px;font-weight:700;font-size:18px;background:var(--orange);color:#fff;box-shadow:0 4px 0 var(--orange2)}
+.big:active{box-shadow:0 1px 0 var(--orange2)}
+.big.blue{background:var(--blue);box-shadow:0 4px 0 var(--blue2)}
+.link{display:flex;align-items:center;gap:8px;background:var(--ice);border-radius:20px;padding:6px 6px 6px 14px;margin:0 0 12px;box-shadow:0 3px 0 var(--sky)}
+.link span{flex:1;min-width:0;text-align:left;font-size:13.5px;color:var(--blue2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:all}
+.link button{flex:none;height:36px;padding:0 14px;border-radius:18px;background:var(--blue);color:#fff;font-weight:700;font-size:14px;box-shadow:0 3px 0 var(--blue2)}
+.tip{font-size:12.5px;color:#5e8e8a;margin-top:14px;line-height:1.45}
+.err{color:var(--orange2);font-size:14px;margin-top:12px}
+
+/* сцена */
+#stage{position:fixed;inset:0}
+#rv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:var(--navy)}
+#rv.screen{object-fit:contain}
+#lv{position:absolute;z-index:6;right:16px;top:calc(var(--sat) + 80px);width:min(220px,32vw);aspect-ratio:16/10;border-radius:22px;object-fit:cover;background:var(--navy);box-shadow:0 5px 0 var(--shade);border:3px solid #fff;transform:scaleX(-1);transition:width .4s var(--spring)}
+#lv.screen{transform:none;object-fit:contain}
+#lv.solo{width:min(460px,calc(100vw - 32px));right:50%;bottom:auto;top:calc(var(--sat) + 84px);transform:translateX(50%) scaleX(-1)}
+#lv.solo.screen{transform:translateX(50%)}
+header{position:absolute;z-index:6;left:16px;top:calc(var(--sat) + 14px);height:50px;border-radius:25px;padding:0 18px 0 16px;display:flex;align-items:center;gap:10px;font-size:14.5px;animation:popin .5s var(--spring) both}
+header b{color:var(--blue);font-weight:800}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--orange);animation:breath 2.4s ease-in-out infinite}
+.ok .dot{background:var(--blue)}
+#ping{color:#5e8e8a;font-variant-numeric:tabular-nums}
+footer{position:absolute;z-index:6;left:50%;bottom:calc(var(--sab) + 18px);transform:translateX(-50%);display:flex;gap:10px;padding:10px;border-radius:40px;animation:fin .55s .05s var(--spring) both}
+@keyframes fin{from{transform:translateX(-50%) scale(0)}}
+.rb{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--ice);color:var(--blue);box-shadow:0 3px 0 var(--sky);position:relative}
+.rb:active{transform:translateY(2px) scale(.94);box-shadow:0 1px 0 var(--sky)}
+.rb svg{width:26px;height:26px}
+.rb.off{background:#ffe3e0;color:var(--orange2);box-shadow:0 3px 0 #f6bdb7}
+.rb.off::after{content:"";position:absolute;left:14px;right:14px;top:50%;height:3px;border-radius:2px;background:currentColor;transform:rotate(-45deg)}
+.rb.on{background:var(--blue);color:#fff;box-shadow:0 3px 0 var(--blue2)}
+.rb.end{background:var(--orange);color:#fff;box-shadow:0 3px 0 var(--orange2)}
+.rb.end svg{transform:rotate(135deg)}
+.rb .lbl{position:absolute;top:-30px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:12px;font-weight:700;background:var(--navy);color:#fff;padding:3px 9px;border-radius:9px;opacity:0;pointer-events:none;transition:opacity .2s}
+@media (hover:hover){.rb:hover .lbl{opacity:1}}
+#lvl{position:absolute;left:8px;right:8px;bottom:6px;height:3px;border-radius:2px;background:var(--blue);transform-origin:left;transform:scaleX(0)}
+.rb.off #lvl{display:none}
+
+/* настройки */
+#sheet{position:fixed;z-index:30;left:50%;bottom:calc(var(--sab) + 100px);transform:translateX(-50%);width:min(400px,calc(100vw - 32px));border-radius:28px;padding:18px 18px 16px;animation:fin .45s var(--spring) both}
+#sheet h3{margin:0 0 10px;font-size:17px;color:var(--blue);font-weight:800}
+#sheet label{display:block;font-size:12.5px;font-weight:700;color:#5e8e8a;margin:10px 0 5px 4px}
+#sheet select{width:100%;height:44px;border-radius:16px;border:0;background:var(--ice);padding:0 12px;outline:0;box-shadow:0 3px 0 var(--sky);color:var(--navy)}
+.tg{display:flex;align-items:center;gap:12px;margin-top:14px;padding:10px 12px;border-radius:18px;background:var(--ice);cursor:pointer;box-shadow:0 3px 0 var(--sky)}
+.tg div{flex:1;font-size:14px}.tg small{display:block;color:#5e8e8a;font-size:12px;margin-top:2px}
+.sw{width:50px;height:30px;border-radius:15px;background:#c9dedb;position:relative;flex:none;transition:background .25s}
+.sw::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 0 rgba(0,0,0,.12);transition:transform .35s var(--spring)}
+.tg.on .sw{background:var(--blue)}.tg.on .sw::after{transform:translateX(20px)}
+input[type=range]{width:100%;accent-color:var(--blue)}
+
+#wait{z-index:10;top:auto;bottom:calc(var(--sab) + 108px);transform:translateX(-50%);animation:fin .55s var(--spring) both}
+#toast{position:fixed;z-index:40;left:50%;top:calc(var(--sat) + 76px);transform:translateX(-50%);max-width:calc(100vw - 32px);padding:11px 18px;border-radius:20px;font-size:14px;text-align:center;transition:opacity .3s,transform .4s var(--spring);pointer-events:none}
+#toast.gone{opacity:0;transform:translateX(-50%) translateY(-10px) scale(.9)}
+@media (max-width:600px){.rb{width:50px;height:50px}footer{gap:7px;padding:8px}#lv{top:auto;bottom:calc(var(--sab) + 100px);width:34vw}#lv.solo{width:calc(100vw - 32px);top:calc(var(--sat) + 76px);bottom:auto}}
+</style></head><body>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
+<symbol id="i-cam" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="6.5" width="12.5" height="11" rx="3"/><path d="m15.5 10.5 5-3v9l-5-3z"/></symbol>
+<symbol id="i-scr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12.5" rx="2.5"/><path d="M8.5 20.5h7M12 13V7.5M9.5 10 12 7.5 14.5 10"/></symbol>
+<symbol id="i-set" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></symbol>
+<symbol id="i-end" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15.2 15.2 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></symbol>
+<symbol id="i-note" viewBox="0 0 24 24" fill="currentColor"><path d="M9 17.5a3 3 0 1 1-2-2.83V5.2a1 1 0 0 1 .76-.97l10-2.5A1 1 0 0 1 19 2.7v12.8a3 3 0 1 1-2-2.83V6.3l-8 2v9.2z"/></symbol>
+</defs></svg>
+
+<div id="lobby" class="card flat">
+  <div class="logo"><svg><use href="#i-note"/></svg></div>
+  <h1 id="lt">Созвон</h1>
+  <p id="ls">Видео, звук для музыки и показ экрана. Ничего ставить не надо.</p>
+  <button id="go" class="big press">Начать</button>
+  <div id="lerr" class="err hide"></div>
+  <div class="tip">Лучше открывать в Chrome. Для музыкального звука нужны наушники.</div>
+</div>
+
+<div id="stage" class="hide">
+  <video id="rv" autoplay playsinline></video>
+  <video id="lv" autoplay playsinline muted></video>
+  <header class="flat"><span class="dot"></span><span id="st">подключаюсь…</span><span id="ping"></span></header>
+  <footer class="flat">
+    <button class="rb" id="bMic"><svg><use href="#i-mic"/></svg><i id="lvl"></i><span class="lbl">Микрофон</span></button>
+    <button class="rb" id="bCam"><svg><use href="#i-cam"/></svg><span class="lbl">Камера</span></button>
+    <button class="rb" id="bScr"><svg><use href="#i-scr"/></svg><span class="lbl">Показать экран</span></button>
+    <button class="rb" id="bSet"><svg><use href="#i-set"/></svg><span class="lbl">Звук и камера</span></button>
+    <button class="rb end" id="bEnd"><svg><use href="#i-end"/></svg><span class="lbl">Положить</span></button>
+  </footer>
+</div>
+
+<div id="wait" class="card flat hide">
+  <h1>Ссылка для ученика</h1>
+  <p id="ws">Скинь её, человек откроет в браузере и сразу будет на связи.</p>
+  <div class="link"><span id="url"></span><button id="copy" class="press">Копировать</button></div>
+  <div class="tip">Ссылка всегда одна и та же: можно скинуть один раз и звонить по ней на каждый урок.</div>
+</div>
+
+<div id="sheet" class="flat hide">
+  <h3>Звук и камера</h3>
+  <label>Микрофон / звуковая карта</label><select id="sMic"></select>
+  <label>Громкость микрофона</label><input id="sGain" type="range" min="0" max="2" step="0.01" value="1">
+  <label>Камера</label><select id="sCam"></select>
+  <label id="lOut">Куда выводить звук</label><select id="sOut"></select>
+  <div class="tip" style="text-align:left">Звук всегда чистый: стерео, без шумодава, эхоподавления и автогромкости. Поэтому только в наушниках.</div>
+</div>
+
+<div id="toast" class="flat gone"></div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const ICE={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'}]};
+const qs=new URLSearchParams(location.search),room=qs.get('r');
+// в обёртке на Neocities ссылка для ученика должна вести на адрес обёртки
+const base=/^https:\/\/sosa-castle\.neocities\.org\//.test(qs.get('base')||'')?qs.get('base'):location.origin+location.pathname;
+const isHost=!room;
+
+let peer,call,dconn,ac,dest,micGain,micSrc,scrGain,scrSrc,an,micStream,camTrack,blankTrack,scrStream,out;
+let micOn=true,camOn=true,sharing=false,ended=false,micId='',camId='';
+
+/* ---------- звук: микрофон и звук экрана сводятся в один стерео-трек ---------- */
+function micConstraints(){
+  // никакой обработки голоса: ни шумодава, ни эхоподавления, ни автогромкости, ни «изоляции голоса»
+  const c={echoCancellation:false,noiseSuppression:false,autoGainControl:false,voiceIsolation:false,channelCount:{ideal:2},sampleRate:{ideal:48000}};
+  if(micId)c.deviceId={exact:micId};
+  return c;
+}
+async function openMic(){
+  if(micStream)micStream.getTracks().forEach(t=>t.stop());
+  if(micSrc)micSrc.disconnect();
+  micStream=await navigator.mediaDevices.getUserMedia({audio:micConstraints()});
+  micSrc=ac.createMediaStreamSource(micStream);
+  micSrc.connect(micGain);micSrc.connect(an);
+}
+function buildGraph(){
+  ac=new AudioContext({sampleRate:48000,latencyHint:'interactive'});
+  dest=ac.createMediaStreamDestination();dest.channelCount=2;
+  micGain=ac.createGain();micGain.connect(dest);
+  scrGain=ac.createGain();scrGain.connect(dest);
+  an=ac.createAnalyser();an.fftSize=512;
+}
+function meter(){
+  const a=new Uint8Array(an.fftSize),l=$('lvl');
+  (function f(){an.getByteTimeDomainData(a);let m=0;for(const v of a)m=Math.max(m,Math.abs(v-128));
+    l.style.transform=`scaleX(${micOn?Math.min(1,m/70):0})`;requestAnimationFrame(f)})();
+}
+
+/* ---------- видео: камера, а если её нет или выключена — тёмная заглушка ---------- */
+function blank(){
+  const c=document.createElement('canvas');c.width=640;c.height=400;const g=c.getContext('2d');
+  const paint=()=>{g.fillStyle='#0f3331';g.fillRect(0,0,640,400);g.fillStyle='#81d8d0';g.beginPath();g.arc(320,170,52,0,7);g.fill();g.beginPath();g.arc(320,330,100,Math.PI,0);g.fill()};
+  paint();setInterval(paint,1000);
+  return c.captureStream(2).getVideoTracks()[0];
+}
+async function openCam(){
+  try{
+    const v={width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}};if(camId)v.deviceId={exact:camId};
+    const s=await navigator.mediaDevices.getUserMedia({video:v});
+    if(camTrack)camTrack.stop();
+    camTrack=s.getVideoTracks()[0];camTrack.contentHint='motion';
+  }catch(e){camTrack=null}
+}
+const curVideo=()=>sharing?scrStream.getVideoTracks()[0]:(camOn&&camTrack)?camTrack:blankTrack;
+function showLocal(){
+  const lv=$('lv');lv.srcObject=new MediaStream([curVideo()]);
+  lv.classList.toggle('screen',sharing);
+}
+async function pushVideo(){
+  showLocal();
+  const s=call&&call.peerConnection&&call.peerConnection.getSenders().find(s=>s.track&&s.track.kind==='video');
+  if(s){await s.replaceTrack(curVideo());tune()}
+  send({screen:sharing});
+}
+
+/* ---------- opus для музыки: стерео, 510 кбит, без DTX ---------- */
+function sdp(s){
+  const m=s.match(/a=rtpmap:(\d+) opus\/48000/i);if(!m)return s;
+  const pt=m[1],drop=/^(stereo|sprop-stereo|maxaveragebitrate|usedtx|maxplaybackrate|cbr)=/;
+  return s.replace(new RegExp('a=fmtp:'+pt+' (.*)'),(_,p)=>'a=fmtp:'+pt+' '+p.split(';').map(x=>x.trim()).filter(x=>x&&!drop.test(x))
+    .concat(['stereo=1','sprop-stereo=1','maxaveragebitrate=510000','maxplaybackrate=48000','usedtx=0']).join(';'));
+}
+function tune(){
+  if(!call||!call.peerConnection)return;
+  for(const s of call.peerConnection.getSenders()){
+    if(!s.track)continue;const p=s.getParameters();if(!p.encodings||!p.encodings.length)continue;
+    if(s.track.kind==='audio'){p.encodings[0].maxBitrate=320000;p.encodings[0].priority='high';p.encodings[0].networkPriority='high'}
+    else p.encodings[0].maxBitrate=sharing?4000000:1500000;
+    s.setParameters(p).catch(()=>{});
+  }
+}
+
+/* ---------- состояние звонка ---------- */
+function status(t,ok){$('st').textContent=t;document.querySelector('header').classList.toggle('ok',!!ok);if(!ok)$('ping').textContent=''}
+let tt;function toast(t,ms=3500){const e=$('toast');e.textContent=t;e.classList.remove('gone');clearTimeout(tt);tt=setTimeout(()=>e.classList.add('gone'),ms)}
+function send(o){try{dconn&&dconn.open&&dconn.send(o)}catch(e){}}
+function bindData(d){
+  dconn=d;
+  d.on('open',()=>send({screen:sharing}));
+  d.on('data',o=>{if(o&&'screen' in o)$('rv').classList.toggle('screen',!!o.screen)});
+}
+function bindCall(c){
+  call=c;
+  c.on('stream',s=>{const rv=$('rv');if(rv.srcObject!==s){rv.srcObject=s;rv.play().catch(()=>{})}
+    if(sinkId&&rv.setSinkId)rv.setSinkId(sinkId).catch(()=>{});
+    $('lv').classList.remove('solo');$('wait').classList.add('hide');tune()});
+  c.on('close',()=>{if(call===c)lost()});
+  c.on('error',()=>{});
+  const pc=c.peerConnection;
+  // не соединились за 25 с — сбрасываем: учитель снова ждёт, ученик перезвонит
+  setTimeout(()=>{if(call===c&&pc&&pc.connectionState!=='connected')c.close()},25000);
+  pc&&pc.addEventListener('connectionstatechange',()=>{
+    if(call!==c)return;
+    if(pc.connectionState==='connected'){status('на связи',true);tune()}
+    else if(pc.connectionState==='disconnected')status('связь подвисла…');
+    else if(pc.connectionState==='failed'){status('связь оборвалась');c.close()}
+  });
+}
+function lost(){
+  call=null;dconn=null;$('rv').srcObject=null;$('rv').classList.remove('screen');
+  if(isHost){$('lv').classList.add('solo');$('wait').classList.remove('hide');$('ws').textContent='Ученик вышел. Он может зайти снова по той же ссылке.';status('ждём ученика')}
+  else if(!ended){status('связь оборвалась, перезваниваю…');setTimeout(dial,2000)}
+}
+setInterval(async()=>{
+  if(!call||!call.peerConnection)return;
+  try{const r=await call.peerConnection.getStats();r.forEach(x=>{if(x.type==='candidate-pair'&&x.nominated&&x.currentRoundTripTime!=null)$('ping').textContent='· '+Math.round(x.currentRoundTripTime*1000)+' мс'})}catch(e){}
+},2000);
+
+/* ---------- хозяин: постоянная ссылка, ждёт входящих ---------- */
+function hostId(){
+  let id;try{id=localStorage.getItem('sosacall-id')}catch(e){}
+  if(!id){id='sosa-'+Math.random().toString(36).slice(2,8)+Math.random().toString(36).slice(2,6);try{localStorage.setItem('sosacall-id',id)}catch(e){}}
+  return id;
+}
+function startHost(tries=0){
+  const id=hostId();
+  peer=new Peer(id,{config:ICE});
+  peer.on('open',()=>{
+    const u=base+'?r='+id;$('url').textContent=u;
+    $('wait').classList.remove('hide');$('lv').classList.add('solo');status('ждём ученика');
+  });
+  peer.on('call',c=>{if(call&&call!==c){const old=call;call=null;old.close()}
+    c.answer(out,{sdpTransform:sdp});bindCall(c);status('соединяю…')});
+  peer.on('connection',bindData);
+  peer.on('disconnected',()=>{if(!peer.destroyed)setTimeout(()=>peer.reconnect(),1500)});
+  peer.on('error',e=>{
+    if(e.type==='unavailable-id'){peer.destroy();
+      if(tries<12){status('занимаю ссылку…');setTimeout(()=>startHost(tries+1),3000)}
+      else status('эта ссылка уже открыта в другой вкладке')}
+    else if(e.type==='network'||e.type==='server-error')status('нет связи с сервером, пробую ещё…');
+  });
+}
+
+/* ---------- ученик: звонит по ссылке, сам перезванивает ---------- */
+let dialT;
+function dial(){
+  clearTimeout(dialT);if(ended||!peer||peer.destroyed)return;
+  if(peer.disconnected){peer.reconnect();dialT=setTimeout(dial,2000);return}
+  if(call){const old=call;call=null;old.close()}
+  bindData(peer.connect(room,{reliable:true}));
+  bindCall(peer.call(room,out,{sdpTransform:sdp}));
+  status('звоню…');
+}
+function startGuest(){
+  peer=new Peer({config:ICE});
+  peer.on('open',dial);
+  peer.on('disconnected',()=>{if(!peer.destroyed&&!ended)setTimeout(()=>peer.reconnect(),1500)});
+  peer.on('error',e=>{
+    if(e.type==='peer-unavailable'){status('ждём, пока учитель зайдёт…');if(call){const c=call;call=null;c.close()}dialT=setTimeout(dial,4000)}
+    else if(e.type==='network'||e.type==='server-error')status('нет связи с сервером, пробую ещё…');
+  });
+}
+
+/* ---------- кнопки ---------- */
+$('go').onclick=async()=>{
+  $('go').disabled=true;$('go').textContent='Разрешаю доступ…';$('lerr').classList.add('hide');
+  try{
+    buildGraph();await ac.resume();
+    await openMic();await openCam();blankTrack=blank();
+  }catch(e){
+    $('go').disabled=false;$('go').textContent=isHost?'Начать':'Войти в звонок';
+    $('lerr').textContent='Браузер не дал микрофон. Разреши доступ (значок в адресной строке) и нажми ещё раз.';$('lerr').classList.remove('hide');return;
+  }
+  out=new MediaStream([dest.stream.getAudioTracks()[0],curVideo()]);
+  if(!camTrack){camOn=false;$('bCam').classList.add('off')}
+  $('lobby').classList.add('hide');$('stage').classList.remove('hide');
+  showLocal();meter();fillDevices();
+  isHost?startHost():startGuest();
+};
+$('bMic').onclick=()=>{micOn=!micOn;micGain.gain.value=micOn?+$('sGain').value:0;$('bMic').classList.toggle('off',!micOn);toast(micOn?'Микрофон включён':'Микрофон выключен',1500)};
+$('bCam').onclick=async()=>{
+  if(!camTrack){await openCam();if(!camTrack){toast('Камера не найдена');return}}
+  camOn=!camOn;$('bCam').classList.toggle('off',!camOn);if(!sharing)pushVideo();
+};
+$('bScr').onclick=async()=>{
+  if(sharing)return stopShare();
+  try{
+    scrStream=await navigator.mediaDevices.getDisplayMedia({
+      video:{frameRate:{ideal:30},width:{ideal:1920},height:{ideal:1080}},
+      audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,voiceIsolation:false,channelCount:2,suppressLocalAudioPlayback:false,restrictOwnAudio:true},
+      systemAudio:'include',surfaceSwitching:'include',selfBrowserSurface:'exclude'});
+  }catch(e){return}
+  const vt=scrStream.getVideoTracks()[0];vt.contentHint='detail';vt.onended=stopShare;
+  const at=scrStream.getAudioTracks()[0];
+  if(at){scrSrc=ac.createMediaStreamSource(new MediaStream([at]));scrSrc.connect(scrGain);toast('Показываешь экран вместе со звуком')}
+  else toast('Экран пошёл без звука. Чтобы был звук, выбери «Весь экран» или вкладку и включи «звук» внизу окна.',6000);
+  sharing=true;$('bScr').classList.add('on');pushVideo();
+};
+function stopShare(){
+  if(!sharing)return;sharing=false;$('bScr').classList.remove('on');
+  if(scrSrc){scrSrc.disconnect();scrSrc=null}
+  scrStream.getTracks().forEach(t=>t.stop());pushVideo();
+}
+$('bEnd').onclick=()=>{
+  if(isHost){if(call){const c=call;c.close();lost()}else toast('Пока никого нет на связи',1800);return}
+  ended=true;clearTimeout(dialT);if(call)call.close();peer&&peer.destroy();
+  [micStream].forEach(s=>s&&s.getTracks().forEach(t=>t.stop()));camTrack&&camTrack.stop();
+  $('stage').classList.add('hide');$('lobby').classList.remove('hide');
+  $('lt').textContent='Звонок окончен';$('ls').textContent='Чтобы зайти снова, обнови страницу.';$('go').classList.add('hide');
+};
+$('copy').onclick=async()=>{
+  const u=$('url').textContent;
+  try{await navigator.clipboard.writeText(u)}catch(e){const r=document.createRange();r.selectNode($('url'));getSelection().removeAllRanges();getSelection().addRange(r);document.execCommand('copy')}
+  $('copy').textContent='Готово';setTimeout(()=>$('copy').textContent='Копировать',1600);
+};
+$('rv').ondblclick=()=>document.fullscreenElement?document.exitFullscreen():$('rv').requestFullscreen().catch(()=>{});
+
+/* ---------- настройки ---------- */
+let sinkId='';
+$('bSet').onclick=()=>{$('sheet').classList.toggle('hide');$('bSet').classList.toggle('on');fillDevices()};
+document.addEventListener('pointerdown',e=>{if(!$('sheet').classList.contains('hide')&&!e.target.closest('#sheet,#bSet')){$('sheet').classList.add('hide');$('bSet').classList.remove('on')}});
+async function fillDevices(){
+  const ds=await navigator.mediaDevices.enumerateDevices();
+  const fill=(sel,kind,cur)=>{const list=ds.filter(d=>d.kind===kind);sel.innerHTML='';
+    list.forEach((d,i)=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||(kind+' '+(i+1));sel.appendChild(o)});
+    if(cur)sel.value=cur;return list.length};
+  const mt=micStream&&micStream.getAudioTracks()[0];
+  fill($('sMic'),'audioinput',micId||(mt&&mt.getSettings().deviceId));
+  fill($('sCam'),'videoinput',camId||(camTrack&&camTrack.getSettings().deviceId));
+  const canOut='setSinkId' in HTMLMediaElement.prototype&&fill($('sOut'),'audiooutput',sinkId);
+  $('sOut').classList.toggle('hide',!canOut);$('lOut').classList.toggle('hide',!canOut);
+}
+$('sMic').onchange=async e=>{micId=e.target.value;try{await openMic()}catch(x){toast('Не получилось открыть этот вход')}};
+$('sCam').onchange=async e=>{camId=e.target.value;await openCam();if(camTrack&&!camOn){camOn=true;$('bCam').classList.remove('off')}if(!sharing)pushVideo()};
+$('sOut').onchange=e=>{sinkId=e.target.value;$('rv').setSinkId&&$('rv').setSinkId(sinkId).catch(()=>{})};
+$('sGain').oninput=e=>{if(micOn)micGain.gain.value=+e.target.value};
+
+if(!isHost){$('lt').textContent='Тебя зовут на урок';$('ls').textContent='Нажми кнопку, разреши микрофон и камеру, и вы на связи.';$('go').textContent='Войти в звонок'}
+</script>
+</body></html>
