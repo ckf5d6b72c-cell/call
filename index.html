@@ -3,9 +3,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#81d8d0">
 <title>Созвон</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
+@font-face{font-family:Rubik;font-weight:400 800;font-display:swap;src:url(rubik-cyr.woff2) format('woff2');unicode-range:U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Rubik;font-weight:400 800;font-display:swap;src:url(rubik-lat.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+2190-2193,U+2212}
 :root{--bg:#81d8d0;--blue:#0a9e98;--blue2:#07807b;--sky:#b8ebe6;--ice:#eaf9f7;--orange:#fd5e53;--orange2:#d8433a;--navy:#0f3331;--shade:#4fb0a9;
  --spring:cubic-bezier(.3,1.6,.45,1);--sab:env(safe-area-inset-bottom);--sat:env(safe-area-inset-top)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -130,16 +130,16 @@ input[type=range]{width:100%;accent-color:var(--blue)}
 
 <div id="toast" class="flat gone"></div>
 
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="mqtt.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-const ICE={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'}]};
+const ICE={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun2.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'},{urls:'stun:stun.sipnet.ru:3478'}]};
 const qs=new URLSearchParams(location.search),room=qs.get('r');
 // в обёртке на Neocities ссылка для ученика должна вести на адрес обёртки
 const base=/^https:\/\/sosa-castle\.neocities\.org\//.test(qs.get('base')||'')?qs.get('base'):location.origin+location.pathname;
 const isHost=!room;
 
-let peer,call,dconn,ac,dest,micGain,micSrc,scrGain,scrSrc,an,micStream,camTrack,blankTrack,scrStream,out;
+let pc,ctl,onSig,ac,dest,micGain,micSrc,scrGain,scrSrc,an,micStream,camTrack,blankTrack,scrStream,out;
 let micOn=true,camOn=true,sharing=false,ended=false,micId='',camId='';
 
 /* ---------- звук: микрофон и звук экрана сводятся в один стерео-трек ---------- */
@@ -191,7 +191,7 @@ function showLocal(){
 }
 async function pushVideo(){
   showLocal();
-  const s=call&&call.peerConnection&&call.peerConnection.getSenders().find(s=>s.track&&s.track.kind==='video');
+  const s=pc&&pc.getSenders().find(s=>s.track&&s.track.kind==='video');
   if(s){await s.replaceTrack(curVideo());tune()}
   send({screen:sharing});
 }
@@ -204,8 +204,8 @@ function sdp(s){
     .concat(['stereo=1','sprop-stereo=1','maxaveragebitrate=510000','maxplaybackrate=48000','usedtx=0']).join(';'));
 }
 function tune(){
-  if(!call||!call.peerConnection)return;
-  for(const s of call.peerConnection.getSenders()){
+  if(!pc)return;
+  for(const s of pc.getSenders()){
     if(!s.track)continue;const p=s.getParameters();if(!p.encodings||!p.encodings.length)continue;
     if(s.track.kind==='audio'){p.encodings[0].maxBitrate=320000;p.encodings[0].priority='high';p.encodings[0].networkPriority='high'}
     else p.encodings[0].maxBitrate=sharing?4000000:1500000;
@@ -216,82 +216,138 @@ function tune(){
 /* ---------- состояние звонка ---------- */
 function status(t,ok){$('st').textContent=t;document.querySelector('header').classList.toggle('ok',!!ok);if(!ok)$('ping').textContent=''}
 let tt;function toast(t,ms=3500){const e=$('toast');e.textContent=t;e.classList.remove('gone');clearTimeout(tt);tt=setTimeout(()=>e.classList.add('gone'),ms)}
-function send(o){try{dconn&&dconn.open&&dconn.send(o)}catch(e){}}
-function bindData(d){
-  dconn=d;
-  d.on('open',()=>send({screen:sharing}));
-  d.on('data',o=>{if(o&&'screen' in o)$('rv').classList.toggle('screen',!!o.screen)});
-}
-function bindCall(c){
-  call=c;
-  c.on('stream',s=>{const rv=$('rv');if(rv.srcObject!==s){rv.srcObject=s;rv.play().catch(()=>{})}
-    if(sinkId&&rv.setSinkId)rv.setSinkId(sinkId).catch(()=>{});
-    $('lv').classList.remove('solo');$('wait').classList.add('hide');tune()});
-  c.on('close',()=>{if(call===c)lost()});
-  c.on('error',()=>{});
-  const pc=c.peerConnection;
-  // не соединились за 25 с — сбрасываем: учитель снова ждёт, ученик перезвонит
-  setTimeout(()=>{if(call===c&&pc&&pc.connectionState!=='connected')c.close()},25000);
-  pc&&pc.addEventListener('connectionstatechange',()=>{
-    if(call!==c)return;
-    if(pc.connectionState==='connected'){status('на связи',true);tune()}
-    else if(pc.connectionState==='disconnected')status('связь подвисла…');
-    else if(pc.connectionState==='failed'){status('связь оборвалась');c.close()}
-  });
-}
-function lost(){
-  call=null;dconn=null;$('rv').srcObject=null;$('rv').classList.remove('screen');
-  if(isHost){$('lv').classList.add('solo');$('wait').classList.remove('hide');$('ws').textContent='Ученик вышел. Он может зайти снова по той же ссылке.';status('ждём ученика')}
-  else if(!ended){status('связь оборвалась, перезваниваю…');setTimeout(dial,2000)}
+function send(o){try{ctl&&ctl.readyState==='open'&&ctl.send(JSON.stringify(o))}catch(e){}}
+function bindCtl(d){
+  ctl=d;
+  d.onopen=()=>send({screen:sharing});
+  d.onmessage=e=>{try{const o=JSON.parse(e.data);if('screen' in o)$('rv').classList.toggle('screen',!!o.screen)}catch(x){}};
 }
 setInterval(async()=>{
-  if(!call||!call.peerConnection)return;
-  try{const r=await call.peerConnection.getStats();r.forEach(x=>{if(x.type==='candidate-pair'&&x.nominated&&x.currentRoundTripTime!=null)$('ping').textContent='· '+Math.round(x.currentRoundTripTime*1000)+' мс'})}catch(e){}
+  if(!pc)return;
+  try{const r=await pc.getStats();r.forEach(x=>{if(x.type==='candidate-pair'&&x.nominated&&x.currentRoundTripTime!=null)$('ping').textContent='· '+Math.round(x.currentRoundTripTime*1000)+' мс'})}catch(e){}
 },2000);
 
-/* ---------- хозяин: постоянная ссылка, ждёт входящих ---------- */
+/* ---------- сигнализация: зашифрованные записки через три публичных MQTT-брокера сразу ----------
+   PeerJS-сервер отдаёт российским адресам 403, поэтому знакомимся сами; хватает любого живого брокера */
+const BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081/mqtt'];
+const me=Math.random().toString(36).slice(2,12);
+let key,topic,brokers=[];const seen=new Set();
+async function sigInit(id){
+  const enc=new TextEncoder(),hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  // тема — хэш комнаты, ключ — другой хэш: подслушав тему, ключ не вычислить
+  topic='sosacall/'+hex(await crypto.subtle.digest('SHA-256',enc.encode('topic:'+id))).slice(0,24)+'/m';
+  key=await crypto.subtle.importKey('raw',await crypto.subtle.digest('SHA-256',enc.encode('key:'+id)),'AES-GCM',false,['encrypt','decrypt']);
+  brokers=BROKERS.map(u=>{
+    const c=mqtt.connect(u,{clientId:'sc_'+me+'_'+Math.random().toString(36).slice(2,6),clean:true,reconnectPeriod:4000,connectTimeout:10000,keepalive:30});
+    c.on('connect',()=>c.subscribe(topic));c.on('error',()=>{});
+    c.on('message',(t,b)=>recv(b));
+    return c;
+  });
+}
+const sigOk=()=>brokers.some(c=>c.connected);
+async function sig(o){
+  o.from=me;o.mid=Math.random().toString(36).slice(2);
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(o))));
+  const b=new Uint8Array(12+ct.length);b.set(iv);b.set(ct,12);
+  brokers.forEach(c=>c.connected&&c.publish(topic,b,{qos:0}));
+}
+async function recv(b){
+  try{
+    const u=new Uint8Array(b),pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:u.slice(0,12)},key,u.slice(12));
+    const o=JSON.parse(new TextDecoder().decode(pt));
+    if(o.from===me||seen.has(o.mid)||(o.to&&o.to!==me))return;seen.add(o.mid);
+    onSig(o);
+  }catch(e){}
+}
+
+/* ---------- соединение ---------- */
+function gathered(p){
+  return new Promise(r=>{if(p.iceGatheringState==='complete')return r();
+    const t=setTimeout(r,3000);p.addEventListener('icegatheringstatechange',()=>{if(p.iceGatheringState==='complete'){clearTimeout(t);r()}})});
+}
+function newPC(peerId){
+  closePC();
+  const p=pc=new RTCPeerConnection(ICE);p.peerId=peerId;p.born=Date.now();
+  out.getTracks().forEach(t=>p.addTrack(t,out));
+  p.ontrack=e=>{const rv=$('rv'),s=e.streams[0]||new MediaStream([e.track]);
+    if(rv.srcObject!==s){rv.srcObject=s;rv.play().catch(()=>{})}
+    if(sinkId&&rv.setSinkId)rv.setSinkId(sinkId).catch(()=>{})};
+  p.ondatachannel=e=>bindCtl(e.channel);
+  // не соединились за 25 с — сбрасываем: учитель снова ждёт, ученик перезвонит
+  setTimeout(()=>{if(pc===p&&p.connectionState!=='connected')lost()},25000);
+  let dt;
+  p.onconnectionstatechange=()=>{
+    if(pc!==p)return;clearTimeout(dt);
+    if(p.connectionState==='connected'){status('на связи',true);tune();$('lv').classList.remove('solo');$('wait').classList.add('hide')}
+    else if(p.connectionState==='disconnected'){status('связь подвисла…');dt=setTimeout(()=>{if(pc===p&&p.connectionState!=='connected')lost()},10000)}
+    else if(p.connectionState==='failed')lost();
+  };
+  return p;
+}
+function closePC(){if(pc){const p=pc;pc=null;ctl=null;try{p.close()}catch(e){}}}
+function lost(){
+  closePC();$('rv').srcObject=null;$('rv').classList.remove('screen');
+  if(isHost){$('lv').classList.add('solo');$('wait').classList.remove('hide');$('ws').textContent='Ученик вышел. Он может зайти снова по той же ссылке.';status('ждём ученика')}
+  else if(!ended)status('связь оборвалась, перезваниваю…');
+}
+
+/* ---------- хозяин: постоянная ссылка, ждёт «привет» от ученика и шлёт предложение ---------- */
 function hostId(){
   let id;try{id=localStorage.getItem('sosacall-id')}catch(e){}
   if(!id){id='sosa-'+Math.random().toString(36).slice(2,8)+Math.random().toString(36).slice(2,6);try{localStorage.setItem('sosacall-id',id)}catch(e){}}
   return id;
 }
-function startHost(tries=0){
+async function startHost(){
   const id=hostId();
-  peer=new Peer(id,{config:ICE});
-  peer.on('open',()=>{
-    const u=base+'?r='+id;$('url').textContent=u;
-    $('wait').classList.remove('hide');$('lv').classList.add('solo');status('ждём ученика');
-  });
-  peer.on('call',c=>{if(call&&call!==c){const old=call;call=null;old.close()}
-    c.answer(out,{sdpTransform:sdp});bindCall(c);status('соединяю…')});
-  peer.on('connection',bindData);
-  peer.on('disconnected',()=>{if(!peer.destroyed)setTimeout(()=>peer.reconnect(),1500)});
-  peer.on('error',e=>{
-    if(e.type==='unavailable-id'){peer.destroy();
-      if(tries<12){status('занимаю ссылку…');setTimeout(()=>startHost(tries+1),3000)}
-      else status('эта ссылка уже открыта в другой вкладке')}
-    else if(e.type==='network'||e.type==='server-error')status('нет связи с сервером, пробую ещё…');
-  });
+  $('url').textContent=base+'?r='+id;
+  $('wait').classList.remove('hide');$('lv').classList.add('solo');status('подключаюсь…');
+  await sigInit(id);
+  const chk=setInterval(()=>{if(!pc)status(sigOk()?'ждём ученика':'нет связи с сервером, пробую ещё…')},1500);
+  onSig=async o=>{
+    if(o.t==='hello'){
+      if(pc&&pc.peerId===o.from&&(pc.connectionState==='connected'||Date.now()-pc.born<15000))return; // повторный привет, уже соединяемся
+      const p=newPC(o.from);status('соединяю…');
+      bindCtl(p.createDataChannel('ctl'));
+      const of=await p.createOffer();await p.setLocalDescription({type:'offer',sdp:sdp(of.sdp)});
+      await gathered(p);if(pc!==p)return;
+      sig({t:'offer',to:o.from,sdp:p.localDescription.sdp});
+    }else if(o.t==='answer'&&pc&&pc.peerId===o.from&&pc.signalingState==='have-local-offer'){
+      await pc.setRemoteDescription({type:'answer',sdp:o.sdp});
+    }else if(o.t==='bye'&&pc&&pc.peerId===o.from)lost();
+  };
 }
 
-/* ---------- ученик: звонит по ссылке, сам перезванивает ---------- */
-let dialT;
-function dial(){
-  clearTimeout(dialT);if(ended||!peer||peer.destroyed)return;
-  if(peer.disconnected){peer.reconnect();dialT=setTimeout(dial,2000);return}
-  if(call){const old=call;call=null;old.close()}
-  bindData(peer.connect(room,{reliable:true}));
-  bindCall(peer.call(room,out,{sdpTransform:sdp}));
-  status('звоню…');
+/* ---------- ученик: шлёт «привет», пока не соединится ---------- */
+let helloT;
+async function startGuest(){
+  status('подключаюсь…');
+  await sigInit(room);
+  let lastOffer=0;
+  helloT=setInterval(()=>{
+    if(ended)return;
+    if(!sigOk()){status('нет связи с сервером, пробую ещё…');return}
+    const busy=pc&&(pc.connectionState==='connected'||Date.now()-lastOffer<20000);
+    if(busy)return;
+    if(!pc)status(lastOffer?'перезваниваю…':'ждём, пока учитель зайдёт…');
+    sig({t:'hello'});
+  },2500);
+  onSig=async o=>{
+    if(o.t==='offer'){
+      lastOffer=Date.now();
+      const p=newPC(o.from);status('соединяю…');
+      await p.setRemoteDescription({type:'offer',sdp:o.sdp});
+      const ans=await p.createAnswer();await p.setLocalDescription({type:'answer',sdp:sdp(ans.sdp)});
+      await gathered(p);if(pc!==p)return;
+      sig({t:'answer',to:o.from,sdp:p.localDescription.sdp});
+    }else if(o.t==='bye'&&pc&&pc.peerId===o.from)hangup('Учитель завершил звонок');
+  };
 }
-function startGuest(){
-  peer=new Peer({config:ICE});
-  peer.on('open',dial);
-  peer.on('disconnected',()=>{if(!peer.destroyed&&!ended)setTimeout(()=>peer.reconnect(),1500)});
-  peer.on('error',e=>{
-    if(e.type==='peer-unavailable'){status('ждём, пока учитель зайдёт…');if(call){const c=call;call=null;c.close()}dialT=setTimeout(dial,4000)}
-    else if(e.type==='network'||e.type==='server-error')status('нет связи с сервером, пробую ещё…');
-  });
+function hangup(why){
+  ended=true;clearInterval(helloT);closePC();
+  micStream&&micStream.getTracks().forEach(t=>t.stop());camTrack&&camTrack.stop();
+  $('stage').classList.add('hide');$('lobby').classList.remove('hide');
+  $('lt').textContent=why;$('ls').textContent='Чтобы зайти снова, обнови страницу.';$('go').classList.add('hide');
 }
 
 /* ---------- кнопки ---------- */
@@ -335,11 +391,9 @@ function stopShare(){
   scrStream.getTracks().forEach(t=>t.stop());pushVideo();
 }
 $('bEnd').onclick=()=>{
-  if(isHost){if(call){const c=call;c.close();lost()}else toast('Пока никого нет на связи',1800);return}
-  ended=true;clearTimeout(dialT);if(call)call.close();peer&&peer.destroy();
-  [micStream].forEach(s=>s&&s.getTracks().forEach(t=>t.stop()));camTrack&&camTrack.stop();
-  $('stage').classList.add('hide');$('lobby').classList.remove('hide');
-  $('lt').textContent='Звонок окончен';$('ls').textContent='Чтобы зайти снова, обнови страницу.';$('go').classList.add('hide');
+  if(isHost){if(pc){sig({t:'bye',to:pc.peerId});lost()}else toast('Пока никого нет на связи',1800);return}
+  if(pc)sig({t:'bye',to:pc.peerId});
+  hangup('Звонок окончен');
 };
 $('copy').onclick=async()=>{
   const u=$('url').textContent;
